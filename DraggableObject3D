@@ -1,0 +1,85 @@
+using UnityEngine;
+
+public class DraggableObject3D : MonoBehaviour
+{
+    private bool isDragging = false;
+    private Vector3 touchOffset;
+    string hitObjectTag;
+
+    void Update()
+    {
+        if(GameState.DecorMode==true)
+
+        if (Input.touchCount > 0)
+        {
+            Touch touch = Input.GetTouch(0);
+
+            switch (touch.phase)
+            {
+                case TouchPhase.Began:
+                    // Check if the touch began on the draggable object
+                    if (IsTouchingObject(touch.position))
+                    {
+                        isDragging = true;
+                        // Calculate the offset between touch position and object position
+                        touchOffset = transform.position - GetTouchWorldPosition(touch.position);
+                    }
+                    break;
+
+                case TouchPhase.Moved:
+                    // If dragging, update the object's position based on touch movement
+                    if (isDragging)
+                    {
+                        Vector3 newPosition = GetTouchWorldPosition(touch.position) + touchOffset;
+                        transform.position = newPosition;
+                    }
+                    break;
+
+                case TouchPhase.Ended:
+                    // Stop dragging when the touch is released
+
+                    Vector3 raycastOrigin = transform.position;
+                    Ray ray1 = new Ray(raycastOrigin, Vector3.down);
+                    RaycastHit hit1;
+                    if (Physics.Raycast(ray1, out hit1, Mathf.Infinity))
+                    {
+
+                        hitObjectTag = hit1.collider.gameObject.tag;
+                        print(hitObjectTag);
+                        if (hitObjectTag!="Floor")
+                        {
+                            transform.position = Vector3.zero;
+                        }
+                        
+                    }
+
+                    isDragging = false;
+                    break;
+            }
+        }
+    }
+
+    private bool IsTouchingObject(Vector2 touchPosition)
+    {
+        // Use a raycast to determine if the touch is on the object in the 3D space
+        Ray ray = Camera.main.ScreenPointToRay(touchPosition);
+        RaycastHit hit;
+
+        if (Physics.Raycast(ray, out hit))
+        {
+            return hit.collider.gameObject == gameObject;
+        }
+
+        return false;
+    }
+
+    private Vector3 GetTouchWorldPosition(Vector2 touchPosition)
+    {
+        // Convert touch position to a ray in the 3D world and return the intersection point with a plane
+        Ray ray = Camera.main.ScreenPointToRay(touchPosition);
+        Plane plane = new Plane(Vector3.up, transform.position);
+        float distance;
+        plane.Raycast(ray, out distance);
+        return ray.GetPoint(distance);
+    }
+}
