@@ -1,0 +1,136 @@
+using UnityEngine;
+
+public class DraggableObject3D : MonoBehaviour
+{
+    private bool isDragging = false;
+    private Vector3 touchOffset;
+    string hitObjectTag;
+    Vector3[] cornersLocal;
+    Collision TouchCollision;
+
+    private void Start()
+    {
+        DelayedFunctionCall();
+    }
+    void Update()
+    {
+        if (GameState.DecorMode == true)
+
+            if (Input.touchCount > 0)
+            {
+                Touch touch = Input.GetTouch(0);
+
+                switch (touch.phase)
+                {
+                    case TouchPhase.Began:
+                        // Check if the touch began on the draggable object
+                        if (IsTouchingObject(touch.position))
+                        {
+                            isDragging = true;
+                            // Calculate the offset between touch position and object position
+                            touchOffset = transform.position - GetTouchWorldPosition(touch.position);
+                        }
+                        break;
+
+                    case TouchPhase.Moved:
+                        // If dragging, update the object's position based on touch movement
+                        if (isDragging)
+                        {
+                            Vector3 newPosition = GetTouchWorldPosition(touch.position) + touchOffset;
+                            transform.position = newPosition;
+                        }
+                        break;
+
+                    case TouchPhase.Ended:
+                        DelayedFunctionCall();
+                        Ray ray1;
+                        RaycastHit hit1;
+                        foreach (var item in cornersLocal)
+                        {
+                            ray1 = new Ray(item, Vector3.down);
+
+                            if (Physics.Raycast(ray1, out hit1, Mathf.Infinity))
+                            {
+
+                                hitObjectTag = hit1.collider.gameObject.tag;
+                                
+                                if (hitObjectTag != "Floor")
+                                {
+                                    transform.position = Vector3.zero;
+                                    TouchCollision = null;
+                                    print("1"+hitObjectTag);
+                                }
+
+                                if (TouchCollision != null && TouchCollision.gameObject.tag == "DraggableTag")
+                                {
+                                    transform.position = Vector3.zero;
+                                    TouchCollision = null;
+                                    print("2" + hitObjectTag);
+                                }
+
+
+                            }
+
+                        }
+                        isDragging = false;
+                        break;
+                }
+            }
+    }
+
+    private bool IsTouchingObject(Vector2 touchPosition)
+    {
+        // Use a raycast to determine if the touch is on the object in the 3D space
+        Ray ray = Camera.main.ScreenPointToRay(touchPosition);
+        RaycastHit hit;
+
+        if (Physics.Raycast(ray, out hit))
+        {
+            return hit.collider.gameObject == gameObject;
+        }
+
+        return false;
+    }
+
+    private Vector3 GetTouchWorldPosition(Vector2 touchPosition)
+    {
+        // Convert touch position to a ray in the 3D world and return the intersection point with a plane
+        Ray ray = Camera.main.ScreenPointToRay(touchPosition);
+        Plane plane = new Plane(Vector3.up, transform.position);
+        float distance;
+        plane.Raycast(ray, out distance);
+        return ray.GetPoint(distance);
+    }
+
+    private void DelayedFunctionCall()
+    {
+        // Get the BoxCollider component attached to this GameObject
+        BoxCollider boxCollider = GetComponent<BoxCollider>();
+
+        if (boxCollider != null)
+        {
+            // Get the min and max coordinates in local space
+            Vector3 minLocal = boxCollider.bounds.min;
+            Vector3 maxLocal = boxCollider.bounds.max;
+
+            // Calculate individual corners in local space
+            cornersLocal = new Vector3[4];
+            cornersLocal[0] = new Vector3(minLocal.x, minLocal.y, minLocal.z);
+            cornersLocal[1] = new Vector3(minLocal.x, minLocal.y, maxLocal.z);
+            cornersLocal[2] = new Vector3(maxLocal.x, minLocal.y, minLocal.z);
+            cornersLocal[3] = new Vector3(maxLocal.x, minLocal.y, maxLocal.z);
+
+        }
+       
+
+    }
+
+    private void OnCollisionEnter(Collision collision)
+    {
+        if(isDragging)
+        TouchCollision = collision;
+    }
+
+
+
+}
